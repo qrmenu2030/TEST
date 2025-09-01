@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>QR Меню — Белая тема</title>
+<link href="css/style.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="logo"><i class="fa-solid fa-utensils"></i></div>
+    <div>
+      <div class="title">Pizza & Grill</div>
+      <div class="subtitle">Выберите блюда — оформите заказ в WhatsApp</div>
+    </div>
+  </div>
+
+  <div class="search-container">
+    <input type="text" id="search-input" placeholder="Поиск блюд...">
+    <i class="fa-solid fa-search"></i>
+  </div>
+
+  <!-- Категории -->
+  <h2 class="section pizza">Пицца</h2>
+  <div id="pizza-grid" class="grid"></div>
+
+  <h2 class="section hotdog">Хот-доги</h2>
+  <div id="hotdog-grid" class="grid"></div>
+
+  <h2 class="section drink">Напитки</h2>
+  <div id="drink-grid" class="grid"></div>
+
+  <h2 class="section dessert">Десерты</h2>
+  <div id="dessert-grid" class="grid"></div>
+</div>
+
+<script src="js/script.js"></script>
+</body>
+</html>
