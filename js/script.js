@@ -1,133 +1,131 @@
-const sheetID = "1536OW6-bxV0sE8X7V8sd9iSudAzyO4pdvImX1PL9WWY"; 
-const sheetName = "Лист1";
-const query = encodeURIComponent("select A,B,C,D");
-const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?sheet=${sheetName}&tq=${query}`;
+// ------------------- Переменные -------------------
+let cart = JSON.parse(localStorage.getItem("cart")) || [];
 
-let cart = [];
+const cartBtn = document.getElementById("cartBtn");
+const cartModal = document.getElementById("cartModal");
+const cartItems = document.getElementById("cartItems");
+const orderBtn = document.getElementById("orderBtn");
+const clearBtn = document.getElementById("clearBtn");
+const cartCount = document.getElementById("cartCount");
 
-function gvizToJson(gvizText) {
-  const jsonText = gvizText.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\)/)[1];
-  return JSON.parse(jsonText);
-}
-
-function updateCartUI() {
-  const cartContainer = document.getElementById("cart-modal");
-  const cartItems = document.getElementById("cart-items");
-  const cartTotal = document.getElementById("cart-total");
-  const emptyMsg = document.getElementById("empty-msg");
-  const sendBtn = document.getElementById("send-order");
-  cartItems.innerHTML = "";
-  let total = 0;
-
-  if(cart.length === 0) {
-    emptyMsg.style.display = "block";
-    sendBtn.classList.add("disabled");
-    document.getElementById("clear-cart").classList.add("disabled");
-  } else {
-    emptyMsg.style.display = "none";
-    sendBtn.classList.remove("disabled");
-    document.getElementById("clear-cart").classList.remove("disabled");
-
-    cart.forEach((item, idx) => {
-      total += item.price * item.qty;
-      const li = document.createElement("li");
-      li.className = "cart-item";
-      li.innerHTML = `
-        <span>${item.name}</span>
-        <div>
-          <span>${item.price * item.qty} c</span>
-          <button class="qty-btn minus">-</button>
-          <span>${item.qty}</span>
-          <button class="qty-btn plus">+</button>
-        </div>
-      `;
-      cartItems.appendChild(li);
-
-      li.querySelector(".plus").addEventListener("click", () => { item.qty++; updateCartUI(); });
-      li.querySelector(".minus").addEventListener("click", () => { item.qty--; if(item.qty <=0) cart.splice(idx,1); updateCartUI(); });
-    });
-  }
-
-  cartTotal.textContent = total;
-  document.getElementById("cart-count").textContent = cart.reduce((a,b)=>a+b.qty,0);
-  const itemsText = cart.map(i => `${i.qty}× ${i.name}`).join(", ");
-  sendBtn.href = `https://wa.me/992123456789?text=Хочу заказать: ${encodeURIComponent(itemsText)}`;
-}
-
-function addToCart(item) {
-  const existing = cart.find(i=>i.name===item.name);
-  if(existing) existing.qty++;
-  else cart.push({...item, qty:1});
-  updateCartUI();
-}
-
-document.getElementById("clear-cart").addEventListener("click", ()=>{ cart=[]; updateCartUI(); });
-
-document.getElementById("cart-btn").addEventListener("click", ()=>{ document.getElementById("cart-modal").classList.add("active"); });
-document.getElementById("cart-close").addEventListener("click", ()=>{ document.getElementById("cart-modal").classList.remove("active"); });
-
-document.getElementById("search-input").addEventListener("input", e=>{
-  const val = e.target.value.toLowerCase();
-  document.querySelectorAll(".card").forEach(card=>{
-    const name = card.querySelector(".name").textContent.toLowerCase();
-    const desc = card.querySelector(".muted")?.textContent.toLowerCase()||"";
-    card.style.display = name.includes(val)||desc.includes(val)?"flex":"none";
-  });
+// ------------------- Показ/скрытие корзины -------------------
+cartBtn.addEventListener("click", () => {
+  cartModal.style.display = cartModal.style.display === "flex" ? "none" : "flex";
+  renderCart();
 });
 
-fetch(url)
-  .then(res=>res.text())
-  .then(rep=>{
-    const data = gvizToJson(rep);
-    const container = document.getElementById("menu-container");
-    const loading = document.getElementById("loading");
-    const categories = {};
+function closeCart() {
+  cartModal.style.display = "none";
+}
 
-    data.table.rows.forEach(row=>{
-      const img = row.c[0]?.v;
-      const name = row.c[1]?.v;
-      const price = parseFloat(row.c[2]?.v);
-      const category = row.c[3]?.v || "Без категории";
+// ------------------- Добавить товар -------------------
+function addToCart(name, price) {
+  const item = cart.find(i => i.name === name);
+  if (item) {
+    item.qty++;
+  } else {
+    cart.push({ name, price, qty: 1 });
+  }
 
-      if(!categories[category]) categories[category]=[];
-      categories[category].push({img,name,price});
-    });
+  // Анимация кнопки
+  const btn = event.currentTarget;
+  btn.classList.add("active");
+  setTimeout(() => btn.classList.remove("active"), 200);
 
-    Object.keys(categories).forEach(cat=>{
-      const h2 = document.createElement("h2");
-      h2.textContent = cat;
-      h2.className = "section";
-      container.appendChild(h2);
+  saveCart();
+  renderCart();
+}
 
-      const grid = document.createElement("div");
-      grid.className = "grid";
+// ------------------- Удалить товар -------------------
+function removeFromCart(name) {
+  const item = cart.find(i => i.name === name);
+  if (item) {
+    item.qty--;
+    if (item.qty <= 0) {
+      cart = cart.filter(i => i.name !== name);
+    }
+  }
+  saveCart();
+  renderCart();
+}
 
-      categories[cat].forEach(item=>{
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <div class="thumb" style="background-image:url('${item.img}')"></div>
-          <div class="info">
-            <div class="name">${item.name}</div>
-            <div class="muted"></div>
-          </div>
-          <div class="card-footer">
-            <div class="price">${item.price} c</div>
-            <button class="add"><i class="fa-solid fa-plus"></i></button>
-          </div>
-        `;
-        grid.appendChild(card);
+// ------------------- Очистить корзину -------------------
+clearBtn.addEventListener("click", () => {
+  if (cart.length > 0) {
+    cart = [];
+    saveCart();
+    renderCart();
+  }
+});
 
-        card.querySelector(".add").addEventListener("click", ()=> addToCart(item));
-      });
+// ------------------- Оформить заказ через WhatsApp -------------------
+orderBtn.addEventListener("click", () => {
+  if (cart.length === 0) return;
 
-      container.appendChild(grid);
-    });
+  let message = "Здравствуйте! Хочу заказать:\n";
+  let total = 0;
 
-    loading.style.display = "none";
-    container.style.display = "block";
-  })
-  .catch(err=>{
-    console.error("Ошибка загрузки меню:", err);
-    document.getElementById("menu-container").innerHTML="<p>Не удалось загрузить меню. Проверьте публикацию таблицы.</p>";
+  cart.forEach(i => {
+    message += `- ${i.name} x${i.qty} = ${i.price * i.qty} сомони\n`;
+    total += i.price * i.qty;
   });
+
+  // Текстовое предупреждение о доставке
+  message += "\nДоставка: до 3 км — бесплатно, более 3 км — +10 сомони";
+  message += `\nИтого: ${total} сомони`;
+
+  const phone = "992123456789";
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  window.open(url, "_blank");
+});
+
+// ------------------- Отображение корзины -------------------
+function renderCart() {
+  cartItems.innerHTML = "";
+
+  let totalCount = 0;
+
+  if (cart.length === 0) {
+    cartItems.innerHTML = "<p>Корзина пуста</p>";
+    orderBtn.classList.add("disabled");
+    clearBtn.classList.add("disabled");
+  } else {
+    cart.forEach(i => {
+      totalCount += i.qty;
+
+      const div = document.createElement("div");
+      div.classList.add("cart-item");
+
+      div.innerHTML = `
+        <span>${i.name} (${i.qty}) - ${i.price * i.qty} сомони</span>
+        <span>
+          <button class="plus" onclick="addToCart('${i.name}', ${i.price})"><i class="fas fa-plus"></i></button>
+          <button class="minus" onclick="removeFromCart('${i.name}')"><i class="fas fa-minus"></i></button>
+        </span>
+      `;
+      cartItems.appendChild(div);
+    });
+    orderBtn.classList.remove("disabled");
+    clearBtn.classList.remove("disabled");
+  }
+
+  // Обновление счётчика на кнопке корзины
+  cartCount.textContent = totalCount;
+}
+
+// ------------------- Сохранение корзины в localStorage -------------------
+function saveCart() {
+  localStorage.setItem("cart", JSON.stringify(cart));
+}
+
+// ------------------- Переключение категорий -------------------
+function showCategory(id) {
+  document.querySelectorAll(".category").forEach(cat => cat.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  document.querySelectorAll(".tabs button").forEach(btn => btn.classList.remove("active"));
+  event.currentTarget.classList.add("active");
+}
+
+// ------------------- Инициализация -------------------
+renderCart();
